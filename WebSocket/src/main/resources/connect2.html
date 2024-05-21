@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Example</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #output {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #e9e9e9;
+        }
+    </style>
+</head>
+<body>
+<h1>WebSocket Connection</h1>
+
+<!-- Раздел для подписки на id -->
+<div>
+    <h2>Подписка на ID</h2>
+    <input type="text" id="idInput" placeholder="Введите id">
+    <input type="text" id="intervalInput" placeholder="Введите interval">
+    <input type="text" id="sizeInput" placeholder="Введите size">
+    <button id="fetchDataButton" disabled>Отправить GET запрос</button>
+    <button id="subscribeButton" disabled>Подписаться</button>
+</div>
+
+<!-- Раздел для отображения полученных данных -->
+<div id="output">
+    <h2>Полученные данные</h2>
+</div>
+
+<script>
+    var socket = new SockJS('http://localhost:8001/ws');
+    var stompClient = Stomp.over(socket);
+    stompClient.connect({}, function(frame) {
+        // Функция для проверки полей ввода и активации кнопок
+        function checkInputsAndActivateButtons() {
+            var id = document.getElementById('idInput').value;
+            var interval = document.getElementById('intervalInput').value;
+            var size = document.getElementById('sizeInput').value;
+
+            // Проверяем, пусты ли поля, и активируем кнопки соответственно
+            document.getElementById('fetchDataButton').disabled = !(id && interval && size);
+            document.getElementById('subscribeButton').disabled = !(id && interval);
+        }
+
+        // Добавляем обработчики событий keyup для полей ввода
+        document.getElementById('idInput').addEventListener('keyup', checkInputsAndActivateButtons);
+        document.getElementById('intervalInput').addEventListener('keyup', checkInputsAndActivateButtons);
+        document.getElementById('sizeInput').addEventListener('keyup', checkInputsAndActivateButtons);
+
+        // Обработчик для кнопки Fetch Data
+document.getElementById('fetchDataButton').addEventListener('click', function() {
+    var size = document.getElementById('sizeInput').value;
+    var id = document.getElementById('idInput').value;
+    var interval = document.getElementById('intervalInput').value;
+    fetch(`http://localhost:8082/eclient
+    /exchange_rates/api/${interval}/${id}?size=${size}`)
+        .then(response => response.json())
+        .then(data => {
+            var formattedData = data.map(function(item) {
+                return JSON.stringify(item);
+            }).join('<br>');
+            document.getElementById('output').innerHTML = formattedData;
+        })
+        .catch(error => console.error('Error:', error));
+});
+
+
+        // Обработчик для кнопки Subscribe
+        document.getElementById('subscribeButton').addEventListener('click', function() {
+            var interval = document.getElementById('intervalInput').value;
+            var id = document.getElementById('idInput').value;
+            var topic = `/topic/${interval}/${id}`;
+
+        stompClient.subscribe(topic, function(message) {
+            var data = JSON.parse(message.body);
+            var formattedData = JSON.stringify(data);
+            document.getElementById('output').innerHTML += '<br>' + formattedData;
+           });
+        });
+
+        document.getElementById('subscribeButton').addEventListener('click', function() {
+            var id = document.getElementById('idInput').value;
+            var size = document.getElementById('sizeInput').value;
+                        var interval = document.getElementById('intervalInput').value;
+            var id = document.getElementById('idInput').value;
+            var topic = `/topic/${interval}/${id}`;
+            stompClient.send(topic, {}, JSON.stringify({ message: "Привет, мир!" }));
+
+        });
+    });
+</script>
+</body>
+</html>
